@@ -36,7 +36,12 @@ export default async function ProductDetailPage({
       <PageHeader title="Detalle del producto" backHref="/armario" />
 
       <Card className="flex flex-col items-center gap-3 text-center">
-        <ProductSwatch categoryName={product.category.name} seed={product.id} size="lg" />
+        <ProductSwatch
+          categoryName={product.category.name}
+          seed={product.id}
+          photoUrl={product.photo_url}
+          size="lg"
+        />
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
             {product.brand}

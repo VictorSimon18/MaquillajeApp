@@ -63,7 +63,12 @@ export function CatalogSearch({
               onClick={() => onSelect(product)}
               className="flex items-center gap-3 rounded-2xl bg-surface p-3 text-left shadow-[0_8px_20px_-14px_rgba(36,28,38,0.2)] ring-1 ring-black/[0.03] transition-transform active:scale-[0.98]"
             >
-              <ProductSwatch categoryName={product.category.name} seed={product.id} size="sm" />
+              <ProductSwatch
+                categoryName={product.category.name}
+                seed={product.id}
+                photoUrl={product.default_photo_url}
+                size="sm"
+              />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-display text-sm font-semibold text-ink">
                   {product.name}

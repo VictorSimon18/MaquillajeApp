@@ -103,7 +103,11 @@ export function CatalogConfirmForm({
       </button>
 
       <Card className="flex items-center gap-3">
-        <ProductSwatch categoryName={catalogProduct.category.name} seed={catalogProduct.id} />
+        <ProductSwatch
+          categoryName={catalogProduct.category.name}
+          seed={catalogProduct.id}
+          photoUrl={catalogProduct.default_photo_url}
+        />
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
             {catalogProduct.brand}

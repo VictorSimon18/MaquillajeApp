@@ -62,12 +62,12 @@ export default async function DashboardPage() {
             </div>
 
             <div className="mt-4 flex gap-3 overflow-x-auto no-scrollbar">
-              {recent.map(({ id, name, category }) => (
+              {recent.map(({ id, name, category, photo_url }) => (
                 <div
                   key={id}
                   className="flex w-28 shrink-0 flex-col items-center gap-2 rounded-2xl bg-white/10 p-3 text-center"
                 >
-                  <ProductSwatch categoryName={category.name} seed={id} size="sm" />
+                  <ProductSwatch categoryName={category.name} seed={id} photoUrl={photo_url} size="sm" />
                   <p className="text-xs font-semibold leading-tight">{name}</p>
                 </div>
               ))}
@@ -102,7 +102,12 @@ export default async function DashboardPage() {
                     href={`/producto/${product.id}`}
                     className="flex items-center gap-3 rounded-2xl bg-surface p-3 shadow-[0_8px_20px_-14px_rgba(36,28,38,0.2)] ring-1 ring-black/[0.03] active:scale-[0.98]"
                   >
-                    <ProductSwatch categoryName={product.category.name} seed={product.id} size="sm" />
+                    <ProductSwatch
+                      categoryName={product.category.name}
+                      seed={product.id}
+                      photoUrl={product.photo_url}
+                      size="sm"
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-display text-sm font-semibold text-ink">
                         {product.name}
