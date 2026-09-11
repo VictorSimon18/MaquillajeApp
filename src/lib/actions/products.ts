@@ -184,6 +184,69 @@ export async function logUsage(productId: string): Promise<{ error?: string }> {
   return {};
 }
 
+/** Crea un producto del inventario a partir de un producto del catálogo. */
+export async function createProductFromCatalog(
+  catalogProductId: string,
+  openedAt: string,
+  occasionIds: string[],
+): Promise<ActionResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Debes iniciar sesión." };
+
+  const { data: catalogProductRow, error: catalogError } = await supabase
+    .from("catalog_products")
+    .select("name, brand, category_id, shade, default_photo_url, category:categories(default_shelf_life_days)")
+    .eq("id", catalogProductId)
+    .maybeSingle();
+
+  if (catalogError || !catalogProductRow) {
+    return { error: "No se ha encontrado el producto del catálogo." };
+  }
+
+  const catalogProduct = catalogProductRow as unknown as {
+    name: string;
+    brand: string;
+    category_id: string;
+    shade: string | null;
+    default_photo_url: string | null;
+    category: { default_shelf_life_days: number } | null;
+  };
+
+  const { data: product, error } = await supabase
+    .from("products")
+    .insert({
+      user_id: user.id,
+      name: catalogProduct.name,
+      brand: catalogProduct.brand,
+      category_id: catalogProduct.category_id,
+      shade: catalogProduct.shade,
+      opened_at: openedAt || null,
+      shelf_life_days: catalogProduct.category?.default_shelf_life_days ?? null,
+      photo_url: catalogProduct.default_photo_url,
+    })
+    .select("id")
+    .single();
+
+  if (error || !product) {
+    return { error: "No se ha podido guardar el producto." };
+  }
+
+  if (occasionIds.length > 0) {
+    const rows = occasionIds.map((occasion_id) => ({ product_id: product.id, occasion_id }));
+    const { error: occasionsError } = await supabase.from("product_occasions").insert(rows);
+    if (occasionsError) {
+      return {
+        productId: product.id,
+        error: "Producto guardado, pero no se pudieron asociar las ocasiones.",
+      };
+    }
+  }
+
+  revalidatePath("/armario");
+  revalidatePath("/");
+  return { productId: product.id };
+}
+
 export async function createCustomCategory(
   name: string,
   defaultShelfLifeDays: number,

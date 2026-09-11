@@ -36,3 +36,17 @@ export interface ProductWithRelations extends Product {
   occasions: Occasion[];
   usage_count: number;
 }
+
+export interface CatalogProduct {
+  id: string;
+  name: string;
+  brand: string;
+  category_id: string;
+  shade: string | null;
+  default_photo_url: string | null;
+  popularity_rank: number;
+}
+
+export interface CatalogProductWithCategory extends CatalogProduct {
+  category: Category;
+}

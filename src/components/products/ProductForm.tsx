@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Camera, Check, Plus, TriangleAlert } from "lucide-react";
+import { Camera, Check, Plus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { DuplicateWarning } from "@/components/ui/DuplicateWarning";
 import { getCategoryIcon, getOccasionIcon } from "@/lib/constants";
 import {
   checkDuplicateProduct,
@@ -322,23 +323,11 @@ export function ProductForm({
       </Card>
 
       {duplicate ? (
-        <Card className="flex flex-col gap-3 !bg-amber-soft">
-          <div className="flex items-start gap-2.5">
-            <TriangleAlert size={18} className="mt-0.5 shrink-0 text-amber" strokeWidth={2.25} />
-            <p className="text-sm font-semibold text-ink">
-              Ya tienes un producto parecido: {duplicate.name} ({duplicate.brand}
-              {duplicate.shade ? ` · ${duplicate.shade}` : ""}).
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Button type="button" variant="ghost" className="flex-1" onClick={() => setDuplicate(null)}>
-              Revisar
-            </Button>
-            <Button type="button" variant="primary" className="flex-1" onClick={continueDespiteDuplicate}>
-              Guardar igualmente
-            </Button>
-          </div>
-        </Card>
+        <DuplicateWarning
+          duplicate={duplicate}
+          onReview={() => setDuplicate(null)}
+          onConfirmAnyway={continueDespiteDuplicate}
+        />
       ) : null}
 
       {error ? <p className="text-sm font-semibold text-coral">{error}</p> : null}
