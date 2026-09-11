@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+:root {
+  /* Base surfaces */
+  --color-bg: #fff8f3;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fbf1ea;
+  --color-line: #f0e3e7;
+
+  /* Text */
+  --color-ink: #241c26;
+  --color-ink-soft: #514a58;
+  --color-ink-muted: #8b8291;
+
+  /* Brand accents */
+  --color-primary: #ff3e78; /* coral-fuchsia glow */
+  --color-primary-soft: #ffe3ec;
+  --color-primary-ink: #ffffff;
+
+  --color-secondary: #7c5cfc; /* electric lilac */
+  --color-secondary-soft: #ece5ff;
+  --color-secondary-ink: #ffffff;
+
+  --color-mint: #14b8a6; /* fresh / active */
+  --color-mint-soft: #dbf6f1;
+
+  --color-amber: #ffa726; /* expiring soon */
+  --color-amber-soft: #fff1dc;
+
+  --color-coral: #ff5a5f; /* expired */
+  --color-coral-soft: #ffe3e4;
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-muted: var(--color-surface-muted);
+  --color-line: var(--color-line);
+
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-ink-muted: var(--color-ink-muted);
+
+  --color-primary: var(--color-primary);
+  --color-primary-soft: var(--color-primary-soft);
+  --color-primary-ink: var(--color-primary-ink);
+
+  --color-secondary: var(--color-secondary);
+  --color-secondary-soft: var(--color-secondary-soft);
+  --color-secondary-ink: var(--color-secondary-ink);
+
+  --color-mint: var(--color-mint);
+  --color-mint-soft: var(--color-mint-soft);
+
+  --color-amber: var(--color-amber);
+  --color-amber-soft: var(--color-amber-soft);
+
+  --color-coral: var(--color-coral);
+  --color-coral-soft: var(--color-coral-soft);
+
+  --font-display: var(--font-baloo), ui-rounded, system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.input-field {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  padding: 0.65rem 0.9rem;
+  font-size: 0.875rem;
+  color: var(--color-ink);
+}
+.input-field::placeholder {
+  color: var(--color-ink-muted);
+}
+.input-field:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
