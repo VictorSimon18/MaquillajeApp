@@ -28,6 +28,8 @@ export interface Product {
   shelf_life_days: number | null;
   photo_url: string | null;
   notes: string | null;
+  /** Producto de catálogo del que proviene, si se añadió desde ahí (null si se creó a mano). */
+  catalog_product_id: string | null;
   created_at: string;
 }
 
@@ -51,4 +53,29 @@ export interface CatalogProduct {
 
 export interface CatalogProductWithCategory extends CatalogProduct {
   category: Category;
+}
+
+export interface Profile {
+  id: string;
+  username: string;
+  created_at: string;
+}
+
+export interface Review {
+  id: string;
+  catalog_product_id: string;
+  user_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewWithProfile extends Review {
+  profile: Profile;
+}
+
+export interface CatalogRating {
+  average: number;
+  count: number;
 }

@@ -5,7 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { CatalogSearch } from "./CatalogSearch";
 import { CatalogConfirmForm } from "./CatalogConfirmForm";
 import { ProductForm } from "./ProductForm";
-import type { CatalogProductWithCategory, Category, Occasion } from "@/lib/types";
+import type { CatalogProductWithCategory, CatalogRating, Category, Occasion } from "@/lib/types";
 
 type Step = "search" | "confirm" | "manual";
 
@@ -13,10 +13,12 @@ export function AddProductFlow({
   categories,
   occasions,
   catalogProducts,
+  ratings,
 }: {
   categories: Category[];
   occasions: Occasion[];
   catalogProducts: CatalogProductWithCategory[];
+  ratings: Record<string, CatalogRating>;
 }) {
   const [step, setStep] = useState<Step>("search");
   const [selected, setSelected] = useState<CatalogProductWithCategory | null>(null);
@@ -54,6 +56,7 @@ export function AddProductFlow({
   return (
     <CatalogSearch
       products={catalogProducts}
+      ratings={ratings}
       onSelect={(product) => {
         setSelected(product);
         setStep("confirm");

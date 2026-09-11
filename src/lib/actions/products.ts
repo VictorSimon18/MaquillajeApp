@@ -223,6 +223,7 @@ export async function createProductFromCatalog(
       opened_at: openedAt || null,
       shelf_life_days: catalogProduct.category?.default_shelf_life_days ?? null,
       photo_url: catalogProduct.default_photo_url,
+      catalog_product_id: catalogProductId,
     })
     .select("id")
     .single();

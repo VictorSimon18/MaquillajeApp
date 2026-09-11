@@ -1,19 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PackageSearch, Search } from "lucide-react";
+import { PackageSearch, Search, Star } from "lucide-react";
 import { ProductSwatch } from "@/components/ui/ProductSwatch";
 import { EmptyState } from "@/components/ui/EmptyState";
-import type { CatalogProductWithCategory } from "@/lib/types";
+import type { CatalogProductWithCategory, CatalogRating } from "@/lib/types";
 
 const POPULAR_LIMIT = 12;
 
 export function CatalogSearch({
   products,
+  ratings,
   onSelect,
   onManual,
 }: {
   products: CatalogProductWithCategory[];
+  ratings: Record<string, CatalogRating>;
   onSelect: (product: CatalogProductWithCategory) => void;
   onManual: () => void;
 }) {
@@ -70,9 +72,20 @@ export function CatalogSearch({
                 size="sm"
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-display text-sm font-semibold text-ink">
-                  {product.name}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate font-display text-sm font-semibold text-ink">
+                    {product.name}
+                  </p>
+                  {ratings[product.id] ? (
+                    <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-soft px-1.5 py-0.5 text-[11px] font-bold text-amber">
+                      <Star size={10} fill="currentColor" strokeWidth={0} />
+                      {ratings[product.id].average.toFixed(1)}
+                      <span className="font-normal text-ink-muted">
+                        ({ratings[product.id].count})
+                      </span>
+                    </span>
+                  ) : null}
+                </div>
                 <p className="truncate text-xs text-ink-muted">
                   {product.brand}
                   {product.shade ? ` · ${product.shade}` : ""} · {product.category.name}

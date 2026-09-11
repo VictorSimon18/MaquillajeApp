@@ -1,16 +1,19 @@
 import Link from "next/link";
 import { createElement } from "react";
 import { notFound } from "next/navigation";
-import { CalendarDays, Pencil, Repeat, Sparkles, Timer } from "lucide-react";
+import { CalendarDays, MessageSquare, Pencil, Repeat, Sparkles, Timer } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductSwatch } from "@/components/ui/ProductSwatch";
 import { ExpiryBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { DeleteProductButton } from "@/components/products/DeleteProductButton";
+import { ReviewsSection } from "@/components/reviews/ReviewsSection";
 import { getCategoryIcon, getOccasionIcon } from "@/lib/constants";
 import { formatExpiryText, getExpiryStatus } from "@/lib/expiry";
 import { getProductById } from "@/lib/data/products";
+import { getReviewsForCatalogProduct } from "@/lib/data/reviews";
 import { logUsage } from "@/lib/actions/products";
 
 export default async function ProductDetailPage({
@@ -25,6 +28,9 @@ export default async function ProductDetailPage({
   const status = getExpiryStatus(product.opened_at, product.shelf_life_days);
   const expiryText = formatExpiryText(product.opened_at, product.shelf_life_days);
   const productId = product.id;
+  const reviewsSummary = product.catalog_product_id
+    ? await getReviewsForCatalogProduct(product.catalog_product_id)
+    : null;
 
   async function logUsageAction() {
     "use server";
@@ -121,6 +127,26 @@ export default async function ProductDetailPage({
           </Card>
         </div>
       ) : null}
+
+      <div className="mt-5">
+        <h2 className="mb-2.5 flex items-center gap-1.5 font-display text-base font-bold text-ink">
+          <MessageSquare size={16} className="text-secondary" />
+          Reseñas
+        </h2>
+        {product.catalog_product_id && reviewsSummary ? (
+          <ReviewsSection
+            catalogProductId={product.catalog_product_id}
+            productId={product.id}
+            summary={reviewsSummary}
+          />
+        ) : (
+          <EmptyState
+            icon={MessageSquare}
+            title="Sin reseñas de otros usuarios"
+            description="Este producto no está en el catálogo, así que no tiene reseñas de otros usuarios todavía."
+          />
+        )}
+      </div>
 
       <form action={logUsageAction} className="mt-6">
         <Button type="submit" variant="primary" className="w-full">

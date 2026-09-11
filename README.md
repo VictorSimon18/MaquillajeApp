@@ -25,9 +25,12 @@ notificaciones se abordarán en una fase posterior.
    1. `supabase/migrations/00000000000000_init_schema.sql`
    2. `supabase/migrations/00000000000001_catalog_products.sql`
    3. `supabase/migrations/00000000000002_catalog_products_shelf_life.sql`
+   4. `supabase/migrations/00000000000003_profiles_and_reviews.sql`
 
    Crea las tablas, activa Row Level Security y siembra las
-   categorías/ocasiones predefinidas.
+   categorías/ocasiones predefinidas. La última también crea
+   automáticamente un perfil (username provisional a partir del email) para
+   cualquier usuario que ya tuvieras registrado antes de esta migración.
 
    Si después de ejecutar una migración sigues viendo un error tipo
    *"Could not find the '...' column ... in the schema cache"* al usar la
@@ -81,6 +84,30 @@ alguna no encuentra ninguna coincidencia razonable, lo avisa por consola
 (`⚠ No se encontró tag de taxonomía para "..."`) y la salta sin detener el
 resto; si una petición a la API devuelve un error, imprime también el
 cuerpo de la respuesta para poder diagnosticarlo.
+
+## Nombre de usuario y reseñas
+
+Al registrarte eliges un nombre de usuario (3-20 caracteres: letras,
+números y guion bajo), guardado en `profiles` mediante un trigger de
+Postgres sobre `auth.users` — no hace falta llamarlo a mano desde la app.
+Se muestra en el header en vez del email.
+
+Cada producto de tu armario que venga del catálogo (`catalog_product_id`
+no nulo) tiene una sección de reseñas en su detalle: media de estrellas,
+reseñas de otros usuarios, y la tuya propia (crear y editar son la misma
+operación, un upsert). Los productos añadidos a mano no tienen
+`catalog_product_id`, así que muestran un aviso en vez del formulario de
+reseña — no hay a qué producto compartido asociarlas. El buscador de
+"Añadir producto" también muestra la media de estrellas de cada producto
+del catálogo, si tiene alguna.
+
+Un detalle de implementación: como el username duplicado se detecta
+dentro del trigger que crea el perfil (no antes de intentar el registro
+— RLS no deja leer `profiles` sin estar ya autenticado), el mensaje "Ese
+nombre de usuario ya está en uso" se basa en reconocer palabras clave en
+el error que devuelve Supabase Auth, no en una comprobación 100%
+garantizada; si alguna vez ves un error genérico en vez de ese mensaje
+claro al repetir username, es por eso.
 
 ## Desplegar en Cloudflare Workers (pasos manuales)
 
@@ -153,10 +180,14 @@ cuenta o iniciar sesión antes de acceder al armario.
   petición (convención `proxy` de Next.js, sustituye a `middleware.ts`).
 - `src/lib/supabase` — clientes de Supabase para navegador, Server
   Components/Actions y el proxy.
-- `src/lib/data` — lecturas server-side (categorías, ocasiones, productos).
+- `src/lib/data` — lecturas server-side (categorías, ocasiones, productos,
+  perfiles, reseñas).
 - `src/lib/actions` — Server Actions: auth (login/registro/logout) y CRUD de
   productos (crear, editar, borrar, registrar uso, crear desde el catálogo,
-  categorías/ocasiones personalizadas, aviso de duplicados).
+  categorías/ocasiones personalizadas, aviso de duplicados) y reseñas
+  (`upsertReview`).
+- `src/components/reviews` — estrellas de solo lectura/interactivas y la
+  sección de reseñas del detalle de producto.
 - `src/lib/expiry.ts` — cálculo simple de días hasta caducidad a partir de
   `opened_at` + `shelf_life_days` (aritmética directa, no hay todavía un
   sistema de alertas/notificaciones automático).

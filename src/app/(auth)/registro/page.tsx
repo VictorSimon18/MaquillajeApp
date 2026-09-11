@@ -28,6 +28,18 @@ export default function RegisterPage() {
         </p>
       ) : (
         <form action={formAction} className="flex flex-col gap-4">
+          <Field label="Nombre de usuario">
+            <input
+              type="text"
+              name="username"
+              required
+              autoComplete="username"
+              placeholder="Ej. glow_maria"
+              pattern="[A-Za-z0-9_]{3,20}"
+              title="Entre 3 y 20 caracteres: letras, números y guion bajo."
+              className="input-field"
+            />
+          </Field>
           <Field label="Email">
             <input
               type="email"

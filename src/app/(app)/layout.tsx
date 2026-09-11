@@ -13,6 +13,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect("/login");
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .maybeSingle();
+  const displayName = profile?.username ?? user.email ?? "";
+
   return (
     <div className="mx-auto flex min-h-dvh max-w-xl flex-col">
       <header className="sticky top-0 z-30 flex items-center justify-between gap-2 bg-bg/90 px-5 pb-3 pt-5 backdrop-blur supports-[backdrop-filter]:bg-bg/70">
@@ -27,12 +34,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         <form action={signOut} className="flex items-center gap-2">
           <span className="hidden max-w-32 truncate text-xs font-medium text-ink-muted sm:inline">
-            {user.email}
+            {displayName}
           </span>
           <button
             type="submit"
             aria-label="Cerrar sesión"
-            title={user.email ?? "Cerrar sesión"}
+            title={displayName || "Cerrar sesión"}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-ink-soft shadow-sm ring-1 ring-black/[0.04] active:scale-95"
           >
             <LogOut size={15} />
