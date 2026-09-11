@@ -1,35 +1,38 @@
-export type ProductCategory =
-  | "labial"
-  | "base"
-  | "corrector"
-  | "rimel"
-  | "sombra"
-  | "delineador"
-  | "rubor"
-  | "polvo"
-  | "bronceador"
-  | "primer";
-
 export type ExpiryStatus = "active" | "expiring-soon" | "expired";
 
-export type Occasion =
-  | "diario"
-  | "trabajo"
-  | "noche"
-  | "evento"
-  | "finde";
+export interface Category {
+  id: string;
+  user_id: string | null;
+  name: string;
+  default_shelf_life_days: number;
+  is_custom: boolean;
+  created_at: string;
+}
+
+export interface Occasion {
+  id: string;
+  user_id: string | null;
+  name: string;
+  is_custom: boolean;
+  created_at: string;
+}
 
 export interface Product {
   id: string;
+  user_id: string;
   name: string;
   brand: string;
-  category: ProductCategory;
-  colorHex: string;
-  openedDateLabel: string;
-  expiryDateLabel: string;
-  expiryStatus: ExpiryStatus;
-  expiryText: string;
-  usageCount: number;
+  category_id: string;
+  shade: string | null;
+  opened_at: string | null;
+  shelf_life_days: number | null;
+  photo_url: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface ProductWithRelations extends Product {
+  category: Category;
   occasions: Occasion[];
-  notes?: string;
+  usage_count: number;
 }

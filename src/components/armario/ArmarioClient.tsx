@@ -2,41 +2,42 @@
 
 import { useMemo, useState } from "react";
 import { PackageOpen, Search } from "lucide-react";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Chip } from "@/components/ui/Chip";
 import { ProductCard } from "@/components/ui/ProductCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { CATEGORY_META, EXPIRY_STATUS_META } from "@/lib/constants";
-import { PRODUCTS } from "@/lib/mock-data";
-import type { ExpiryStatus, ProductCategory } from "@/lib/types";
+import { EXPIRY_STATUS_META, getCategoryIcon } from "@/lib/constants";
+import { getExpiryStatus } from "@/lib/expiry";
+import type { Category, ExpiryStatus, ProductWithRelations } from "@/lib/types";
 
-type CategoryFilter = "todos" | ProductCategory;
 type StatusFilter = "todos" | ExpiryStatus;
 
-export default function ArmarioPage() {
-  const [category, setCategory] = useState<CategoryFilter>("todos");
+export function ArmarioClient({
+  products,
+  categories,
+}: {
+  products: ProductWithRelations[];
+  categories: Category[];
+}) {
+  const [categoryId, setCategoryId] = useState<string | "todos">("todos");
   const [status, setStatus] = useState<StatusFilter>("todos");
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
-    return PRODUCTS.filter((product) => {
-      if (category !== "todos" && product.category !== category) return false;
-      if (status !== "todos" && product.expiryStatus !== status) return false;
+    return products.filter((product) => {
+      if (categoryId !== "todos" && product.category_id !== categoryId) return false;
+      if (status !== "todos" && getExpiryStatus(product.opened_at, product.shelf_life_days) !== status)
+        return false;
       if (
         query.trim() &&
-        !`${product.name} ${product.brand}`
-          .toLowerCase()
-          .includes(query.trim().toLowerCase())
+        !`${product.name} ${product.brand}`.toLowerCase().includes(query.trim().toLowerCase())
       )
         return false;
       return true;
     });
-  }, [category, status, query]);
+  }, [products, categoryId, status, query]);
 
   return (
-    <div className="pt-1">
-      <PageHeader title="Mi armario" subtitle={`${PRODUCTS.length} productos guardados`} />
-
+    <div>
       <div className="relative mb-4">
         <Search
           size={18}
@@ -62,14 +63,14 @@ export default function ArmarioPage() {
       </div>
 
       <div className="mb-5 flex gap-2 overflow-x-auto no-scrollbar pb-1">
-        <Chip label="Todas las categorías" active={category === "todos"} onClick={() => setCategory("todos")} />
-        {(Object.keys(CATEGORY_META) as ProductCategory[]).map((key) => (
+        <Chip label="Todas las categorías" active={categoryId === "todos"} onClick={() => setCategoryId("todos")} />
+        {categories.map((category) => (
           <Chip
-            key={key}
-            label={CATEGORY_META[key].label}
-            icon={CATEGORY_META[key].icon}
-            active={category === key}
-            onClick={() => setCategory(key)}
+            key={category.id}
+            label={category.name}
+            icon={getCategoryIcon(category.name)}
+            active={categoryId === category.id}
+            onClick={() => setCategoryId(category.id)}
           />
         ))}
       </div>
@@ -77,8 +78,12 @@ export default function ArmarioPage() {
       {filtered.length === 0 ? (
         <EmptyState
           icon={PackageOpen}
-          title="No hay productos con estos filtros"
-          description="Prueba a cambiar la categoría o el estado para ver más resultados."
+          title={products.length === 0 ? "Tu armario está vacío" : "No hay productos con estos filtros"}
+          description={
+            products.length === 0
+              ? "Añade tu primer producto para empezar a llevar el control."
+              : "Prueba a cambiar la categoría o el estado para ver más resultados."
+          }
         />
       ) : (
         <div className="grid grid-cols-2 gap-3">

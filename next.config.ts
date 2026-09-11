@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   devIndicators: {
     position: "top-right",
   },
+  agentRules: false,
 };
 
 export default nextConfig;

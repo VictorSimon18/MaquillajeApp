@@ -1,5 +1,6 @@
 import {
   Briefcase,
+  Dumbbell,
   Droplet,
   Eye,
   Heart,
@@ -13,39 +14,45 @@ import {
   Wand2,
   type LucideIcon,
 } from "lucide-react";
-import type { ExpiryStatus, Occasion, ProductCategory } from "./types";
 
-export const CATEGORY_META: Record<
-  ProductCategory,
-  { label: string; icon: LucideIcon }
-> = {
-  labial: { label: "Labial", icon: Heart },
-  base: { label: "Base", icon: Droplet },
-  corrector: { label: "Corrector", icon: Wand2 },
-  rimel: { label: "Rímel", icon: Eye },
-  sombra: { label: "Sombra", icon: Layers },
-  delineador: { label: "Delineador", icon: PenLine },
-  rubor: { label: "Rubor", icon: Sparkles },
-  polvo: { label: "Polvos", icon: Sparkles },
-  bronceador: { label: "Bronceador", icon: Sun },
-  primer: { label: "Primer", icon: Shield },
+const CATEGORY_ICON_BY_NAME: Record<string, LucideIcon> = {
+  "rímel": Eye,
+  "base de maquillaje": Droplet,
+  "labial": Heart,
+  "sombra de ojos": Layers,
+  "delineador": PenLine,
+  "rubor": Sparkles,
+  "corrector": Wand2,
+  "iluminador": Sparkles,
+  "prebase": Shield,
 };
 
-export const OCCASION_META: Record<
-  Occasion,
-  { label: string; icon: LucideIcon }
-> = {
-  diario: { label: "Diario", icon: Sun },
-  trabajo: { label: "Trabajo", icon: Briefcase },
-  noche: { label: "Noche", icon: Moon },
-  evento: { label: "Evento especial", icon: PartyPopper },
-  finde: { label: "Fin de semana", icon: Sparkles },
+const OCCASION_ICON_BY_NAME: Record<string, LucideIcon> = {
+  "diario": Sun,
+  "trabajo": Briefcase,
+  "noche": Moon,
+  "evento especial": PartyPopper,
+  "deporte": Dumbbell,
 };
 
-export const EXPIRY_STATUS_META: Record<
-  ExpiryStatus,
-  { label: string; color: string; soft: string }
-> = {
+const DEFAULT_CATEGORY_ICON = Sparkles;
+const DEFAULT_OCCASION_ICON = Sparkles;
+
+function normalize(name: string) {
+  return name.trim().toLowerCase();
+}
+
+/** Icono conocido para categorías predefinidas; genérico para las custom. */
+export function getCategoryIcon(name: string): LucideIcon {
+  return CATEGORY_ICON_BY_NAME[normalize(name)] ?? DEFAULT_CATEGORY_ICON;
+}
+
+/** Icono conocido para ocasiones predefinidas; genérico para las custom. */
+export function getOccasionIcon(name: string): LucideIcon {
+  return OCCASION_ICON_BY_NAME[normalize(name)] ?? DEFAULT_OCCASION_ICON;
+}
+
+export const EXPIRY_STATUS_META = {
   active: { label: "Activo", color: "var(--color-mint)", soft: "var(--color-mint-soft)" },
   "expiring-soon": {
     label: "Caduca pronto",
@@ -53,4 +60,4 @@ export const EXPIRY_STATUS_META: Record<
     soft: "var(--color-amber-soft)",
   },
   expired: { label: "Caducado", color: "var(--color-coral)", soft: "var(--color-coral-soft)" },
-};
+} as const;

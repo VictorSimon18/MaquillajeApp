@@ -1,16 +1,17 @@
+import Link from "next/link";
+import { createElement } from "react";
 import { notFound } from "next/navigation";
-import { CalendarDays, Repeat, Sparkles, Timer } from "lucide-react";
+import { CalendarDays, Pencil, Repeat, Sparkles, Timer } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductSwatch } from "@/components/ui/ProductSwatch";
 import { ExpiryBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { CATEGORY_META, OCCASION_META } from "@/lib/constants";
-import { PRODUCTS } from "@/lib/mock-data";
-
-export function generateStaticParams() {
-  return PRODUCTS.map((product) => ({ id: product.id }));
-}
+import { DeleteProductButton } from "@/components/products/DeleteProductButton";
+import { getCategoryIcon, getOccasionIcon } from "@/lib/constants";
+import { formatExpiryText, getExpiryStatus } from "@/lib/expiry";
+import { getProductById } from "@/lib/data/products";
+import { logUsage } from "@/lib/actions/products";
 
 export default async function ProductDetailPage({
   params,
@@ -18,25 +19,36 @@ export default async function ProductDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = PRODUCTS.find((p) => p.id === id);
+  const product = await getProductById(id);
   if (!product) notFound();
+
+  const status = getExpiryStatus(product.opened_at, product.shelf_life_days);
+  const expiryText = formatExpiryText(product.opened_at, product.shelf_life_days);
+  const productId = product.id;
+
+  async function logUsageAction() {
+    "use server";
+    await logUsage(productId);
+  }
 
   return (
     <div className="pt-1">
       <PageHeader title="Detalle del producto" backHref="/armario" />
 
       <Card className="flex flex-col items-center gap-3 text-center">
-        <ProductSwatch category={product.category} colorHex={product.colorHex} size="lg" />
+        <ProductSwatch categoryName={product.category.name} seed={product.id} size="lg" />
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
             {product.brand}
           </p>
           <h1 className="font-display text-xl font-bold text-ink">{product.name}</h1>
-          <p className="mt-0.5 text-sm text-ink-muted">
-            {CATEGORY_META[product.category].label}
+          <p className="mt-0.5 flex items-center justify-center gap-1 text-sm text-ink-muted">
+            {createElement(getCategoryIcon(product.category.name), { size: 14 })}
+            {product.category.name}
+            {product.shade ? ` · ${product.shade}` : ""}
           </p>
         </div>
-        <ExpiryBadge status={product.expiryStatus} />
+        {status ? <ExpiryBadge status={status} /> : null}
       </Card>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
@@ -46,7 +58,9 @@ export default async function ProductDetailPage({
           </span>
           <div>
             <p className="text-xs text-ink-muted">Apertura</p>
-            <p className="text-sm font-semibold text-ink">{product.openedDateLabel}</p>
+            <p className="text-sm font-semibold text-ink">
+              {product.opened_at ?? "Sin registrar"}
+            </p>
           </div>
         </Card>
         <Card className="flex items-start gap-2.5">
@@ -55,7 +69,9 @@ export default async function ProductDetailPage({
           </span>
           <div>
             <p className="text-xs text-ink-muted">Caducidad est.</p>
-            <p className="text-sm font-semibold text-ink">{product.expiryDateLabel}</p>
+            <p className="text-sm font-semibold text-ink">
+              {product.shelf_life_days ? `${product.shelf_life_days} días` : "Sin definir"}
+            </p>
           </div>
         </Card>
         <Card className="col-span-2 flex items-start gap-2.5">
@@ -65,32 +81,32 @@ export default async function ProductDetailPage({
           <div>
             <p className="text-xs text-ink-muted">Uso registrado</p>
             <p className="text-sm font-semibold text-ink">
-              Usado {product.usageCount} veces · {product.expiryText}
+              Usado {product.usage_count} {product.usage_count === 1 ? "vez" : "veces"} ·{" "}
+              {expiryText}
             </p>
           </div>
         </Card>
       </div>
 
-      <div className="mt-5">
-        <h2 className="mb-2.5 flex items-center gap-1.5 font-display text-base font-bold text-ink">
-          <Sparkles size={16} className="text-secondary" />
-          Ocasiones
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {product.occasions.map((occasion) => {
-            const meta = OCCASION_META[occasion];
-            return (
+      {product.occasions.length > 0 ? (
+        <div className="mt-5">
+          <h2 className="mb-2.5 flex items-center gap-1.5 font-display text-base font-bold text-ink">
+            <Sparkles size={16} className="text-secondary" />
+            Ocasiones
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {product.occasions.map((occasion) => (
               <span
-                key={occasion}
+                key={occasion.id}
                 className="inline-flex items-center gap-1.5 rounded-full bg-secondary-soft px-3.5 py-1.5 text-sm font-semibold text-secondary"
               >
-                <meta.icon size={14} strokeWidth={2.5} />
-                {meta.label}
+                {createElement(getOccasionIcon(occasion.name), { size: 14, strokeWidth: 2.5 })}
+                {occasion.name}
               </span>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {product.notes ? (
         <div className="mt-5">
@@ -101,13 +117,20 @@ export default async function ProductDetailPage({
         </div>
       ) : null}
 
-      <div className="mt-6 flex gap-3">
-        <Button variant="ghost" className="flex-1">
-          Editar
+      <form action={logUsageAction} className="mt-6">
+        <Button type="submit" variant="primary" className="w-full">
+          Lo he usado hoy
         </Button>
-        <Button variant="primary" className="flex-1">
-          Marcar como usado hoy
-        </Button>
+      </form>
+
+      <div className="mt-3 flex gap-3">
+        <Link href={`/producto/${product.id}/editar`} className="flex-1">
+          <Button variant="ghost" className="w-full">
+            <Pencil size={16} />
+            Editar
+          </Button>
+        </Link>
+        <DeleteProductButton productId={product.id} />
       </div>
     </div>
   );

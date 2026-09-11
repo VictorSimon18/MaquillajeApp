@@ -1,5 +1,6 @@
-import { CATEGORY_META } from "@/lib/constants";
-import type { ProductCategory } from "@/lib/types";
+import { createElement } from "react";
+import { getCategoryIcon } from "@/lib/constants";
+import { getSwatchColor } from "@/lib/swatch-color";
 
 function hexToRgba(hex: string, alpha: number) {
   const bigint = parseInt(hex.replace("#", ""), 16);
@@ -10,15 +11,16 @@ function hexToRgba(hex: string, alpha: number) {
 }
 
 export function ProductSwatch({
-  category,
-  colorHex,
+  categoryName,
+  seed,
   size = "md",
 }: {
-  category: ProductCategory;
-  colorHex: string;
+  categoryName: string;
+  /** Identificador estable (p. ej. product.id) para un color consistente. */
+  seed: string;
   size?: "sm" | "md" | "lg";
 }) {
-  const { icon: Icon } = CATEGORY_META[category];
+  const colorHex = getSwatchColor(seed);
   const sizes = {
     sm: { box: "h-12 w-12", icon: 18 },
     md: { box: "h-16 w-16", icon: 22 },
@@ -35,7 +37,11 @@ export function ProductSwatch({
         )})`,
       }}
     >
-      <Icon size={sizes.icon} color={colorHex} strokeWidth={2.25} />
+      {createElement(getCategoryIcon(categoryName), {
+        size: sizes.icon,
+        color: colorHex,
+        strokeWidth: 2.25,
+      })}
     </div>
   );
 }
