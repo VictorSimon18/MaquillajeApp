@@ -39,6 +39,38 @@ notificaciones se abordarán en una fase posterior.
    Es idempotente: puedes editar `scripts/seed-catalog.ts` y volver a
    ejecutarlo cuando quieras ampliar o cambiar la lista de productos.
 
+### Ampliar el catálogo con Open Beauty Facts (opcional)
+
+`npm run seed:catalog` ya deja la app funcional por sí solo — este paso es
+opcional, solo para tener más productos donde buscar. `scripts/import-openbeautyfacts.ts`
+importa productos adicionales desde [Open Beauty Facts](https://world.openbeautyfacts.org),
+una base de datos abierta de cosmética, sin necesidad de API key.
+
+Es una importación **puntual bajo demanda**, no una sincronización
+automática — ni se ejecuta sola, ni hay cron ni webhook. La ejecutas tú
+cuando quieras ampliar el catálogo:
+
+```bash
+npm run import:obf
+```
+
+Usa el mismo `SUPABASE_SERVICE_ROLE_KEY` que `seed:catalog`. Es idempotente
+(evita duplicados por nombre+marca, tanto contra el seed manual como contra
+ejecuciones anteriores de este mismo script) y respetuoso con el servidor
+de Open Beauty Facts: máximo 5 páginas de 50 productos por categoría, con
+una pausa entre peticiones. Al terminar imprime un resumen por categoría
+(consultados / descartados por datos incompletos / duplicados / insertados).
+
+Antes de reutilizarlo con frecuencia, abre el script y cambia el contacto
+de ejemplo en `USER_AGENT` por el tuyo (es la práctica recomendada por Open
+Food/Beauty Facts para identificar quién hace las peticiones). El
+comentario al principio del archivo también explica qué pude verificar del
+mapeo de categorías contra la documentación oficial y qué es una
+estimación sin probar en vivo (no tuve salida de red hacia
+`world.openbeautyfacts.org` para comprobarlo) — si una categoría te sale
+con "0 resultados" al ejecutarlo, es la señal de que hay que ajustar ese
+mapeo.
+
 ## Desplegar en Cloudflare Workers (pasos manuales)
 
 El proyecto está preparado para desplegarse en Cloudflare Workers con
@@ -125,6 +157,8 @@ cuenta o iniciar sesión antes de acceder al armario.
 - `supabase/migrations` — esquema SQL (tablas, RLS, datos semilla).
 - `scripts/seed-catalog.ts` — siembra `catalog_products` con una lista
   curada y editable de productos reconocibles (ver `npm run seed:catalog`).
+- `scripts/import-openbeautyfacts.ts` — importación puntual y opcional que
+  amplía el catálogo desde Open Beauty Facts (ver `npm run import:obf`).
 - `wrangler.jsonc` / `open-next.config.ts` — configuración del despliegue en
   Cloudflare Workers (ver sección de despliegue más abajo).
 

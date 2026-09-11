@@ -3,9 +3,11 @@
  *
  * La lista CATALOG de abajo es un punto de partida editable: añade, quita o
  * reordena entradas a mano cuando quieras ampliar el catálogo — no hace
- * falta tocar nada más, este script vuelve a sembrar la tabla entera con lo
- * que haya en el array cada vez que se ejecuta (borra el catálogo anterior
- * e inserta el actual, así siempre queda en sync con este archivo).
+ * falta tocar nada más, este script vuelve a sembrar su propio rango cada
+ * vez que se ejecuta (borra solo las filas con popularity_rank por debajo
+ * de OBF_POPULARITY_BASE e inserta el array actual, así siempre queda en
+ * sync con este archivo). No toca los productos importados con
+ * scripts/import-openbeautyfacts.ts (usan popularity_rank más alto).
  *
  * Usa nombres de producto y marcas reales tal y como se comercializan
  * (sin inventar marcas), pero `default_photo_url` se deja en null a
@@ -151,11 +153,13 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("Borrando catálogo anterior...");
+  console.log("Borrando el seed manual anterior...");
+  // Solo el rango del seed manual (por debajo de OBF_POPULARITY_BASE en
+  // scripts/import-openbeautyfacts.ts) — no toca lo importado de Open Beauty Facts.
   const { error: deleteError } = await supabase
     .from("catalog_products")
     .delete()
-    .gte("popularity_rank", 0);
+    .lt("popularity_rank", 1000);
 
   if (deleteError) {
     console.error("No se pudo limpiar el catálogo anterior:", deleteError.message);
