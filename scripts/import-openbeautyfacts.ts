@@ -121,21 +121,34 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Descarga la taxonomía completa de categorías (una sola vez). */
+/**
+ * Descarga la taxonomía completa de categorías (una sola vez). De esta
+ * llamada depende todo lo demás, así que se reintenta una vez si falla
+ * (visto en la práctica: Open Beauty Facts puede devolver un 500
+ * puntual/transitorio) — no es un bucle de reintentos, solo un segundo
+ * intento tras una pequeña pausa antes de rendirse.
+ */
 async function fetchCategoryTaxonomy(): Promise<ObfTaxonomyTag[]> {
-  const response = await fetch("https://world.openbeautyfacts.org/categories.json", {
-    headers: { "User-Agent": USER_AGENT },
-  });
+  const url = "https://world.openbeautyfacts.org/categories.json";
+  let lastError: string | null = null;
 
-  if (!response.ok) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const response = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
+
+    if (response.ok) {
+      const data = (await response.json()) as ObfCategoriesResponse;
+      return data.tags ?? [];
+    }
+
     const body = await response.text().catch(() => "");
-    throw new Error(
-      `No se pudo descargar la taxonomía de categorías (HTTP ${response.status}): ${body.slice(0, 300)}`,
-    );
+    lastError = `HTTP ${response.status}: ${body.slice(0, 300)}`;
+    if (attempt === 1) {
+      console.warn(`  ⚠ Intento 1 falló (${lastError}). Reintentando...`);
+      await sleep(1000);
+    }
   }
 
-  const data = (await response.json()) as ObfCategoriesResponse;
-  return data.tags ?? [];
+  throw new Error(`No se pudo descargar la taxonomía de categorías tras 2 intentos (${lastError}).`);
 }
 
 function tagMatchesKeyword(tag: ObfTaxonomyTag, keyword: string): boolean {
