@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StarRating } from "./StarRating";
@@ -22,7 +22,7 @@ export function ReviewsSection({
   summary: ReviewsSummary;
 }) {
   const router = useRouter();
-  const [editing, setEditing] = useState(!summary.myReview);
+  const [editing, setEditing] = useState(false);
   const [rating, setRating] = useState(summary.myReview?.rating ?? 0);
   const [comment, setComment] = useState(summary.myReview?.comment ?? "");
   const [submitting, setSubmitting] = useState(false);
@@ -81,21 +81,19 @@ export function ReviewsSection({
           />
           {error ? <p className="text-sm font-semibold text-coral">{error}</p> : null}
           <div className="flex gap-2">
-            {summary.myReview ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className="flex-1"
-                onClick={() => {
-                  setRating(summary.myReview!.rating);
-                  setComment(summary.myReview!.comment ?? "");
-                  setError(null);
-                  setEditing(false);
-                }}
-              >
-                Cancelar
-              </Button>
-            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              className="flex-1"
+              onClick={() => {
+                setRating(summary.myReview?.rating ?? 0);
+                setComment(summary.myReview?.comment ?? "");
+                setError(null);
+                setEditing(false);
+              }}
+            >
+              Cancelar
+            </Button>
             <Button
               type="button"
               variant="primary"
@@ -127,7 +125,12 @@ export function ReviewsSection({
             <p className="text-sm text-ink-soft">{summary.myReview.comment}</p>
           ) : null}
         </Card>
-      ) : null}
+      ) : (
+        <Button type="button" variant="primary" className="w-full" onClick={() => setEditing(true)}>
+          <Plus size={16} />
+          Añadir reseña
+        </Button>
+      )}
 
       {summary.reviews.length === 0 ? (
         summary.totalCount === 0 ? null : (
