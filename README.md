@@ -20,12 +20,20 @@ notificaciones se abordarán en una fase posterior.
    ```bash
    cp .env.local.example .env.local
    ```
-4. En **SQL Editor**, pega y ejecuta el contenido de
-   `supabase/migrations/00000000000000_init_schema.sql` y, a continuación,
-   `supabase/migrations/00000000000001_catalog_products.sql` (en ese orden:
-   el segundo depende de las categorías creadas por el primero). Crea las
-   tablas, activa Row Level Security y siembra las categorías/ocasiones
-   predefinidas.
+4. En **SQL Editor**, pega y ejecuta, EN ESTE ORDEN (cada una depende de la
+   anterior):
+   1. `supabase/migrations/00000000000000_init_schema.sql`
+   2. `supabase/migrations/00000000000001_catalog_products.sql`
+   3. `supabase/migrations/00000000000002_catalog_products_shelf_life.sql`
+
+   Crea las tablas, activa Row Level Security y siembra las
+   categorías/ocasiones predefinidas.
+
+   Si después de ejecutar una migración sigues viendo un error tipo
+   *"Could not find the '...' column ... in the schema cache"* al usar la
+   app o los scripts, el schema cache de PostgREST a veces tarda unos
+   segundos en refrescarse — espera un poco o fuerza el refresco en
+   **Project Settings → API → Reload schema**.
 5. (Recomendado para probar en local) En **Authentication → Providers →
    Email**, puedes desactivar "Confirm email" para no depender del envío de
    correos mientras desarrollas. Actívalo de nuevo antes de producción.
@@ -63,13 +71,16 @@ una pausa entre peticiones. Al terminar imprime un resumen por categoría
 
 Antes de reutilizarlo con frecuencia, abre el script y cambia el contacto
 de ejemplo en `USER_AGENT` por el tuyo (es la práctica recomendada por Open
-Food/Beauty Facts para identificar quién hace las peticiones). El
-comentario al principio del archivo también explica qué pude verificar del
-mapeo de categorías contra la documentación oficial y qué es una
-estimación sin probar en vivo (no tuve salida de red hacia
-`world.openbeautyfacts.org` para comprobarlo) — si una categoría te sale
-con "0 resultados" al ejecutarlo, es la señal de que hay que ajustar ese
-mapeo.
+Food/Beauty Facts para identificar quién hace las peticiones).
+
+El script no mantiene una lista de categorías "adivinada" a mano: al
+arrancar descarga una vez la taxonomía real de categorías de Open Beauty
+Facts y busca ahí, por palabra clave (`CATEGORY_KEYWORDS` al principio del
+archivo), el tag exacto de cada una de las 9 categorías de Glowbox. Si para
+alguna no encuentra ninguna coincidencia razonable, lo avisa por consola
+(`⚠ No se encontró tag de taxonomía para "..."`) y la salta sin detener el
+resto; si una petición a la API devuelve un error, imprime también el
+cuerpo de la respuesta para poder diagnosticarlo.
 
 ## Desplegar en Cloudflare Workers (pasos manuales)
 

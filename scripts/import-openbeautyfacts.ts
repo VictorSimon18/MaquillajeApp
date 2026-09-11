@@ -11,36 +11,25 @@
  *   npm run import:obf
  *
  * Requiere las mismas variables que seed-catalog.ts en .env.local
- * (NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY — ver ese script
- * para más detalle).
+ * (NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY), y que la
+ * migración supabase/migrations/00000000000002_catalog_products_shelf_life.sql
+ * ya esté aplicada (añade la columna shelf_life_days a catalog_products).
  *
- * ── Sobre el mapeo de categorías de Open Beauty Facts ──────────────────
- * No he podido verificar estos valores contra la API en vivo: este entorno
- * de desarrollo no tiene salida de red hacia world.openbeautyfacts.org.
- * Lo que SÍ verifiqué contra fuentes oficiales:
- *  - El endpoint correcto es /api/v2/search con el parámetro
- *    categories_tags_en=<valor en inglés> (no el antiguo /category/<slug>.json
- *    que había planteado al principio — ese es el patrón legacy que la
- *    propia documentación de Open Food/Beauty Facts desaconseja para
- *    proyectos nuevos). Fuente: docs/api/ref/api.yaml del repo
- *    openfoodfacts/openfoodfacts-server.
- *  - El formato de periods_after_opening_tags (en:<N>-month(s) /
- *    en:<N>-day(s)) — verificado contra taxonomies/periods_after_opening.txt
- *    del mismo repo.
- *  - Ojo: revisé taxonomies/beauty/categories.txt (la taxonomía "oficial"
- *    de categorías de belleza de ese repo) y, sorprendentemente, NO
- *    contiene categorías de maquillaje de color (solo higiene/cuidado de
- *    piel y pelo) — así que los valores de abajo son una estimación
- *    razonable basada en el nombre inglés habitual de cada categoría, NO
- *    una verificación 1:1 contra la taxonomía real de Open Beauty Facts.
+ * ── Cómo se resuelven las categorías ────────────────────────────────────
+ * En vez de mantener a mano una tabla de slugs "adivinados" (que resultó
+ * estar mal: "mascaras"/"lipsticks" daban HTTP 500, "blushes"/"concealers"/
+ * "highlighters" daban 0 resultados), el script descarga UNA VEZ al
+ * arrancar la taxonomía real de categorías
+ * (https://world.openbeautyfacts.org/categories.json) y busca, para cada
+ * categoría de Glowbox, la entrada cuyo id o nombre contiene la palabra
+ * clave correspondiente (CATEGORY_KEYWORDS). El tag exacto que devuelve esa
+ * búsqueda es el que se usa para construir la URL de /api/v2/search — ya
+ * no hay slugs inventados a mano.
  *
- * El script avisa por consola si una categoría devuelve 0 resultados en su
- * primera página — eso es la señal de que el valor de abajo está mal.
- * Para comprobar/corregir el valor real, visita
- * https://world.openbeautyfacts.org/categories (buscador de categorías) o
- * prueba directamente:
- *   https://world.openbeautyfacts.org/api/v2/search?categories_tags_en=TU_PRUEBA&page_size=1
- * y ajusta CATEGORY_MAP.
+ * Si no encuentra ninguna coincidencia razonable para una categoría, lo
+ * avisa por consola y la salta (no inventa nada ni detiene el resto del
+ * script). Si una petición a la API devuelve un error, se imprime también
+ * el cuerpo de la respuesta para poder diagnosticarlo.
  */
 import { createClient } from "@supabase/supabase-js";
 
@@ -53,17 +42,17 @@ const POPULARITY_BASE = 1000; // el seed manual usa 1-40, así que esto siempre 
 // uno real tuyo antes de usarlo de forma recurrente.
 const USER_AGENT = "Glowbox - Personal makeup inventory app - contacto@ejemplo.com";
 
-/** Categoría Open Beauty Facts (en inglés, tal y como la espera categories_tags_en) -> categoría de Glowbox. */
-const CATEGORY_MAP: Record<string, string> = {
-  mascaras: "Rímel",
-  lipsticks: "Labial",
-  foundations: "Base de maquillaje",
-  eyeshadows: "Sombra de ojos",
-  eyeliners: "Delineador",
-  blushes: "Rubor",
-  concealers: "Corrector",
-  highlighters: "Iluminador",
-  primers: "Prebase",
+/** Categoría de Glowbox -> palabra clave a buscar en la taxonomía real de Open Beauty Facts. */
+const CATEGORY_KEYWORDS: Record<string, string> = {
+  "Rímel": "mascara",
+  "Labial": "lipstick",
+  "Base de maquillaje": "foundation",
+  "Sombra de ojos": "eyeshadow",
+  "Delineador": "eyeliner",
+  "Rubor": "blush",
+  "Corrector": "concealer",
+  "Iluminador": "highlighter",
+  "Prebase": "primer",
 };
 
 const OBF_FIELDS = [
@@ -92,7 +81,16 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
-// ── Tipos de la respuesta de Open Beauty Facts ──────────────────────────
+// ── Tipos de las respuestas de Open Beauty Facts ────────────────────────
+interface ObfTaxonomyTag {
+  id?: string;
+  name?: string | Record<string, string>;
+}
+
+interface ObfCategoriesResponse {
+  tags?: ObfTaxonomyTag[];
+}
+
 interface ObfProduct {
   product_name?: string;
   product_name_en?: string;
@@ -123,12 +121,60 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Descarga la taxonomía completa de categorías (una sola vez). */
+async function fetchCategoryTaxonomy(): Promise<ObfTaxonomyTag[]> {
+  const response = await fetch("https://world.openbeautyfacts.org/categories.json", {
+    headers: { "User-Agent": USER_AGENT },
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `No se pudo descargar la taxonomía de categorías (HTTP ${response.status}): ${body.slice(0, 300)}`,
+    );
+  }
+
+  const data = (await response.json()) as ObfCategoriesResponse;
+  return data.tags ?? [];
+}
+
+function tagMatchesKeyword(tag: ObfTaxonomyTag, keyword: string): boolean {
+  if (tag.id?.toLowerCase().includes(keyword)) return true;
+
+  if (typeof tag.name === "string") {
+    return tag.name.toLowerCase().includes(keyword);
+  }
+  if (tag.name && typeof tag.name === "object") {
+    return Object.values(tag.name).some((n) => n?.toLowerCase().includes(keyword));
+  }
+  return false;
+}
+
+/**
+ * Busca en la taxonomía descargada el tag real para una palabra clave, y
+ * devuelve el valor tal y como lo espera categories_tags_en (sin el
+ * prefijo de idioma "en:"). Si hay varias coincidencias, se queda con la
+ * de id más corto — normalmente es la categoría genérica ("en:lipsticks")
+ * en vez de una variante más específica ("en:liquid-lipsticks").
+ */
+function resolveObfCategoryTag(tags: ObfTaxonomyTag[], keyword: string): string | null {
+  const matches = tags.filter((tag) => tagMatchesKeyword(tag, keyword.toLowerCase()));
+  if (matches.length === 0) return null;
+
+  matches.sort((a, b) => (a.id?.length ?? Infinity) - (b.id?.length ?? Infinity));
+  const id = matches[0].id;
+  if (!id) return null;
+
+  const colonIndex = id.indexOf(":");
+  return colonIndex >= 0 ? id.slice(colonIndex + 1) : id;
+}
+
 async function fetchCategoryPage(
-  obfCategory: string,
+  obfCategoryTag: string,
   page: number,
 ): Promise<ObfSearchResponse | null> {
   const url = new URL("https://world.openbeautyfacts.org/api/v2/search");
-  url.searchParams.set("categories_tags_en", obfCategory);
+  url.searchParams.set("categories_tags_en", obfCategoryTag);
   url.searchParams.set("page", String(page));
   url.searchParams.set("page_size", String(PAGE_SIZE));
   url.searchParams.set("fields", OBF_FIELDS);
@@ -136,17 +182,20 @@ async function fetchCategoryPage(
   try {
     const response = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
     if (!response.ok) {
-      console.error(`  ✗ HTTP ${response.status} en página ${page} de "${obfCategory}"`);
+      const body = await response.text().catch(() => "");
+      console.error(
+        `  ✗ HTTP ${response.status} en página ${page} de "${obfCategoryTag}": ${body.slice(0, 300)}`,
+      );
       return null;
     }
     return (await response.json()) as ObfSearchResponse;
   } catch (err) {
-    console.error(`  ✗ Error de red en página ${page} de "${obfCategory}":`, (err as Error).message);
+    console.error(`  ✗ Error de red en página ${page} de "${obfCategoryTag}":`, (err as Error).message);
     return null;
   }
 }
 
-/** "en:12-months" -> 365, "en:6-months" -> 180, "en:15-days" -> 15... */
+/** "en:12-months" -> 360, "en:6-months" -> 180, "en:15-days" -> 15... */
 function shelfLifeDaysFromPao(tags: string[] | undefined): number | null {
   if (!tags) return null;
   for (const tag of tags) {
@@ -167,6 +216,7 @@ function firstBrand(brands: string | undefined): string | null {
 
 interface CategoryStats {
   glowboxCategory: string;
+  obfTag: string | null;
   queried: number;
   discarded: number;
   duplicates: number;
@@ -185,6 +235,16 @@ async function main() {
   }
 
   const categoryIdByName = new Map((categories ?? []).map((c) => [c.name, c.id as string]));
+
+  console.log("Descargando la taxonomía de categorías de Open Beauty Facts...");
+  let taxonomyTags: ObfTaxonomyTag[];
+  try {
+    taxonomyTags = await fetchCategoryTaxonomy();
+  } catch (err) {
+    console.error((err as Error).message);
+    process.exit(1);
+  }
+  console.log(`  ${taxonomyTags.length} categorías encontradas en la taxonomía.\n`);
 
   // Catálogo existente (manual + importaciones previas) para deduplicar por
   // nombre+marca, ignorando mayúsculas/minúsculas.
@@ -214,9 +274,10 @@ async function main() {
 
   const statsByCategory: CategoryStats[] = [];
 
-  for (const [obfCategory, glowboxCategory] of Object.entries(CATEGORY_MAP)) {
+  for (const [glowboxCategory, keyword] of Object.entries(CATEGORY_KEYWORDS)) {
     const stats: CategoryStats = {
       glowboxCategory,
+      obfTag: null,
       queried: 0,
       discarded: 0,
       duplicates: 0,
@@ -224,7 +285,7 @@ async function main() {
     };
     statsByCategory.push(stats);
 
-    console.log(`\n→ ${obfCategory} (${glowboxCategory})`);
+    console.log(`→ ${glowboxCategory}`);
 
     const categoryId = categoryIdByName.get(glowboxCategory);
     if (!categoryId) {
@@ -235,20 +296,25 @@ async function main() {
       continue;
     }
 
+    const obfTag = resolveObfCategoryTag(taxonomyTags, keyword);
+    if (!obfTag) {
+      console.warn(`  ⚠ No se encontró tag de taxonomía para "${glowboxCategory}" — la salto.`);
+      continue;
+    }
+    stats.obfTag = obfTag;
+    console.log(`  tag resuelto: "${obfTag}"`);
+
     const rowsToInsert: CatalogRow[] = [];
 
     for (let page = 1; page <= MAX_PAGES_PER_CATEGORY; page++) {
-      const result = await fetchCategoryPage(obfCategory, page);
+      const result = await fetchCategoryPage(obfTag, page);
       await sleep(REQUEST_DELAY_MS);
 
       if (!result) break; // error ya reportado por fetchCategoryPage; pasamos a la siguiente categoría
 
       if (result.products.length === 0) {
         if (page === 1) {
-          console.warn(
-            `  ⚠ 0 resultados para "${obfCategory}". Puede que el nombre no coincida con la ` +
-              "taxonomía real de Open Beauty Facts — revisa el comentario al principio del script.",
-          );
+          console.warn(`  ⚠ 0 resultados para el tag "${obfTag}".`);
         }
         break;
       }
@@ -289,7 +355,7 @@ async function main() {
     if (rowsToInsert.length > 0) {
       const { error: insertError } = await supabase.from("catalog_products").insert(rowsToInsert);
       if (insertError) {
-        console.error(`  ✗ Error insertando "${obfCategory}":`, insertError.message);
+        console.error(`  ✗ Error insertando "${glowboxCategory}":`, insertError.message);
         continue;
       }
       stats.inserted = rowsToInsert.length;
@@ -297,7 +363,7 @@ async function main() {
 
     console.log(
       `  ${stats.queried} consultados · ${stats.discarded} descartados (datos incompletos) · ` +
-        `${stats.duplicates} ya existían · ${stats.inserted} insertados`,
+        `${stats.duplicates} ya existían · ${stats.inserted} insertados\n`,
     );
   }
 
@@ -311,11 +377,12 @@ async function main() {
     { queried: 0, discarded: 0, duplicates: 0, inserted: 0 },
   );
 
-  console.log("\n── Resumen ──────────────────────────────────────────");
+  console.log("── Resumen ──────────────────────────────────────────");
   for (const s of statsByCategory) {
+    const tagInfo = s.obfTag ? `tag="${s.obfTag}"` : "SIN TAG (saltada)";
     console.log(
-      `${s.glowboxCategory.padEnd(20)} consultados=${s.queried}  descartados=${s.discarded}  ` +
-        `duplicados=${s.duplicates}  insertados=${s.inserted}`,
+      `${s.glowboxCategory.padEnd(20)} ${tagInfo.padEnd(28)} consultados=${s.queried}  ` +
+        `descartados=${s.discarded}  duplicados=${s.duplicates}  insertados=${s.inserted}`,
     );
   }
   console.log("─────────────────────────────────────────────────────");

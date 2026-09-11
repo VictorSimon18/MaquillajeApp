@@ -44,6 +44,8 @@ export interface CatalogProduct {
   category_id: string;
   shade: string | null;
   default_photo_url: string | null;
+  /** Solo se rellena para productos importados con datos reales de caducidad (ver scripts/import-openbeautyfacts.ts); si es null, la app usa el valor por defecto de la categoría. */
+  shelf_life_days: number | null;
   popularity_rank: number;
 }
 
