@@ -30,6 +30,12 @@
  * avisa por consola y la salta (no inventa nada ni detiene el resto del
  * script). Si una petición a la API devuelve un error, se imprime también
  * el cuerpo de la respuesta para poder diagnosticarlo.
+ *
+ * Nota: /categories.json pagina a 100 resultados por defecto (hay ~6500
+ * categorías en total en su taxonomía), así que se pide con
+ * page_size=TAXONOMY_PAGE_SIZE para traerlas de golpe en una sola
+ * petición — comprobado en la práctica, no es el comportamiento por
+ * defecto si se llama al endpoint sin ese parámetro.
  */
 import { createClient } from "@supabase/supabase-js";
 
@@ -37,6 +43,13 @@ import { createClient } from "@supabase/supabase-js";
 const PAGE_SIZE = 50;
 const MAX_PAGES_PER_CATEGORY = 5; // tope: 250 productos por categoría
 const REQUEST_DELAY_MS = 400;
+// /categories.json pagina por defecto a 100 resultados (comprobado en la
+// práctica: hay ~6500 categorías en total). Como es una única petición al
+// arrancar el script, pedimos de golpe muchas más de las que hacen falta
+// para no depender de en qué posición del ranking caiga cada una de
+// nuestras 9 categorías.
+const TAXONOMY_PAGE_SIZE = 10000;
+
 const POPULARITY_BASE = 1000; // el seed manual usa 1-40, así que esto siempre queda detrás
 // Identifícate como pide Open Food/Beauty Facts: sustituye el contacto por
 // uno real tuyo antes de usarlo de forma recurrente.
@@ -88,6 +101,7 @@ interface ObfTaxonomyTag {
 }
 
 interface ObfCategoriesResponse {
+  count?: number;
   tags?: ObfTaxonomyTag[];
 }
 
@@ -127,9 +141,13 @@ function sleep(ms: number) {
  * (visto en la práctica: Open Beauty Facts puede devolver un 500
  * puntual/transitorio) — no es un bucle de reintentos, solo un segundo
  * intento tras una pequeña pausa antes de rendirse.
+ *
+ * /categories.json pagina a 100 resultados por defecto (comprobado en la
+ * práctica), así que se pide explícitamente con page_size=TAXONOMY_PAGE_SIZE
+ * para traer de una vez tantas como haga falta.
  */
 async function fetchCategoryTaxonomy(): Promise<ObfTaxonomyTag[]> {
-  const url = "https://world.openbeautyfacts.org/categories.json";
+  const url = `https://world.openbeautyfacts.org/categories.json?page_size=${TAXONOMY_PAGE_SIZE}`;
   let lastError: string | null = null;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -137,7 +155,14 @@ async function fetchCategoryTaxonomy(): Promise<ObfTaxonomyTag[]> {
 
     if (response.ok) {
       const data = (await response.json()) as ObfCategoriesResponse;
-      return data.tags ?? [];
+      const tags = data.tags ?? [];
+      if (data.count && tags.length < data.count) {
+        console.warn(
+          `  ⚠ Solo se descargaron ${tags.length} de ${data.count} categorías. ` +
+            "Si faltan categorías de Glowbox por resolver, sube TAXONOMY_PAGE_SIZE.",
+        );
+      }
+      return tags;
     }
 
     const body = await response.text().catch(() => "");
