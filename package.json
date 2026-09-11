@@ -9,6 +9,7 @@
     "lint": "eslint",
     "seed:catalog": "tsx --env-file=.env.local scripts/seed-catalog.ts",
     "import:obf": "tsx --env-file=.env.local scripts/import-openbeautyfacts.ts",
+    "build:worker": "opennextjs-cloudflare build",
     "preview:worker": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy:worker": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload:worker": "opennextjs-cloudflare build && opennextjs-cloudflare upload",

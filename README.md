@@ -161,6 +161,32 @@ despliegue real (no hay credenciales de Cloudflare ni salida de red hacia
 end-to-end por mí — si algo falla al ejecutarlos en tu máquina, pégame el
 error y lo resolvemos.
 
+### Despliegue automático con cada commit (Workers Builds / Git)
+
+Si conectaste el repo a Cloudflare desde el dashboard (Workers & Pages →
+tu Worker → Settings → Builds) en vez de desplegar con Wrangler en local,
+Cloudflare usa dos comandos **separados** que configuras ahí: uno de
+**Build** y otro de **Deploy**. Tienen que ser:
+
+- **Build command:** `npm run build:worker`
+- **Deploy command:** `npx wrangler deploy`
+
+Si el campo de Build command está en `npm run build` (el valor que suele
+autodetectar), el build de Cloudflare corre solo `next build` — el Next.js
+normal, sin adaptar al runtime de Workers — y el paso de deploy falla con
+`ERROR Could not find compiled Open Next config, did you run the build
+command?`, porque nunca se generó la carpeta `.open-next/` que
+`wrangler deploy` necesita. `npm run build:worker` corre
+`opennextjs-cloudflare build`, que sí hace ese paso (incluye el `next
+build` normal y además adapta el resultado).
+
+Además, para que el build en Cloudflare tenga acceso a
+`NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` (hacen falta
+en build time para inyectarlas en el bundle del cliente), configúralas
+también como variables de entorno del proyecto en esa misma pantalla de
+Settings — los secrets subidos con `wrangler secret put` desde tu máquina
+son para runtime, no se usan durante el build de Cloudflare.
+
 ## Empezar
 
 ```bash
